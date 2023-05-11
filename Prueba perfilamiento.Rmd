@@ -1,0 +1,61 @@
+
+Data
+```{r include=FALSE}
+options(scipen=999)
+options(digits = 5)
+library(dplyr)
+
+#### Estos son datos de fiscalizacion que estoy usando por ahora. NO REPRESENTAN NADA EN REALIDAD. Es sinmplemente para tener numeros. Lo que hago aca es crear una nueva base de datos, usando los datos de fiscalizacion, pero llamandolos infreacciones, aol, suspensiones, para que sean parecidos a los datos de los jugadores
+Binomial_dataset    <- read.csv("~/Dropbox/Chile Dataset analysis/Data and code/Data/Binomial_dataset.csv")   ### Esto es para cargar la base de datos que les mande. Hay que cambiar la direccion nada mas
+data <- data.frame(
+  Respuesta = Binomial_dataset$Binomial.Response,
+  Infracciones = Binomial_dataset$N.actions.per.code,
+  AOL = (Binomial_dataset$Time)/10,
+  Suspensiones = Binomial_dataset$N.enforcers.per.code
+)
+
+###Aca tomo los datos que me mando Herman y selecciono solo 3 variables por ahora (Infracciones, AOL, suspensiones)
+Jugadores    <- read.csv("~/Dropbox/Back up todo/UC/Model/Mejores Jugadores de Riesgo.csv", sep=";")  ### Esto es para cargar la base de datos que les mande. Hay que cambiar la direccion nada mas
+Jugadores = Jugadores[1:350,c(1,2,3,4)]
+
+```
+
+Modelo
+```{r}
+#Este es el modelo logistico para ver como inciden los predictores (infracciones, aol, suspensiones) en la respuesta (probabilidad de una infraccion)
+model = glm(Respuesta ~ Infracciones +AOL+Suspensiones, data= data, family = "binomial")
+summary(model) #Con esto se puede ver los resultados del modelo. Y que por ejemplo infracciones y AOL tienen un efecto positivo (entre mas infracciones mas probabilidad) y suspensiones efecto negativo
+
+#Con esta linea de codigo combinamos los resultaods del modelo con los datos que tenemos, para tener probabilidades a nivel individual
+Probabilidad = predict(model, Jugadores, type= "response") 
+
+####Con estas lineas limpio la info y hago un histograma de frecuencia
+Probabilidad = as.data.frame(Probabilidad)
+rownames(Probabilidad)=as.character(Jugadores$X)
+Probabilidad[,1] = Probabilidad[,1]*100
+hist(Probabilidad[,1], main="Probabilidad de encontrar una infraccion", xlab="% Probabilidad")
+mean(Probabilidad[,1])## esto me muestra que en promedio la probabilidad de encontrar una infraccion es de 6%
+
+```
+
+Evaluando categorias de riesgo
+```{r}
+# Determinar cortes. Esto se puede editar y poner los rangos que uno quiera
+cortes <- quantile(Probabilidad[,1], probs = c(0, 0.3, 0.6, 0.9, 1))
+
+# Esto le pone nombre a cada uno de esos rangos
+categorias <- cut(Probabilidad[,1], breaks = cortes, labels = c("Bajo", "Medio", "Alto", "Muy Alto"), include.lowest = TRUE)
+
+###Aqui completo la tabla con las categoias
+Probabilidad[,2] = categorias
+colnames(Probabilidad) = c("% Probabilidad", "Categoria Riesgo")
+Probabilidad
+
+#Aqui puedo filtrar si quiero ver solo los muy altos por ejemplo
+filter(Probabilidad,Probabilidad$`Categoria Riesgo`%in% c('Muy Alto','Alto'))
+
+```
+
+
+
+
