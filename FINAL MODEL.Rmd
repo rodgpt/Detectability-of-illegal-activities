@@ -50,9 +50,9 @@ for (i in 1:N) {
         
         SimVio[i]         ~  dbern(p[i])
 
-        logit(p[i])       <- g0     +  g1*Time[i]      +  g2*Enforcers[i]   + a[Actor[i]]  + y[Year[i]]  + r[Region[i]]  
+        logit(prob[i])       <- g0     +  g1*Time[i]      +  g2*Enforcers[i]   + a[Actor[i]]  + y[Year[i]]  + r[Region[i]]  
        
-        logit(prob[i])    <- g3     +  v[Violation[i]] +  s[Specie[i]]      
+        logit(p[i])    <- g3     +  v[Violation[i]] +  s[Specie[i]]      
   }
   
   #Priors
