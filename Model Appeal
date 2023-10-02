@@ -1,0 +1,111 @@
+---
+title: "Jags enforcement model Appeal"
+author: "Rod"
+date: "19/5/2022"
+output:
+  pdf_document: default
+  word_document: default
+---
+Load Packages
+```{r include=FALSE}
+library(jagsUI)
+library(XLConnect) #### THIS REQUIERES JAVA
+library(coda)
+library(mcmcplots)
+library(tidyverse)
+library(rethinking)
+library(Metrics)
+library(caret)
+library(performanceEstimation)
+library(dplyr)
+library(ggplot2)
+library(MCMCvis)
+library(gam)
+library(beepr)
+library(performance)
+library(coda)
+library(rjags)
+library(plotly)
+```
+
+Data
+```{r include=FALSE}
+#### Our data
+Binomial_dataset    <- read.csv("~/Dropbox/Chile Dataset analysis/Data and code/Data/Binomial_dataset.csv")   
+
+```
+
+THE MODEL
+```{r echo=TRUE, warning=TRUE}
+modC <- "model {
+for (i in 1:N) { 
+        n.binomial[i]         ~  dbern(P[i])
+        
+        P[i]                  <- prob[i] * SimVio[i] + 0.00001     ## hack required for Rjags -- otherwise 'incompatible'-error 
+        
+        SimVio[i]             ~  dbern(p[i])
+
+        logit(prob[i])        <- g0    
+       
+        logit(p[i])           <- g3    
+  }
+  
+  #Priors
+
+  #Intercepts
+  g0  ~ dunif(-2.2, -1)  ### 
+  g3  ~ dunif(-2.2, -1)  ###
+  
+ 
+} #end model
+"
+filename.use <- 'jags0.txt'
+writeLines(modC, filename.use)  
+filename.save <- paste(modC, 'txt', sep = '.') 
+
+  
+```
+
+
+Chunk for preparing data and RUNNING model
+
+*Warning of Rhat values not being calculated is due to one of categories being set to 0
+```{r echo=TRUE, warning=TRUE}
+basis.dat <- 
+  list( N            = dim(Binomial_dataset)[1], 
+        n.binomial   = Binomial_dataset$Binomial.Response)
+
+
+## PARAMETERS
+pms <- c('g0',  'g3') # 
+
+start_time <- Sys.time()
+start_time
+
+# FIT MODEL
+modC <- jags(data = basis.dat,
+             # inits = mod.inits, ##
+              parameters.to.save = pms, 
+              model.file = "Jags0.txt",
+              parallel   = T,
+              n.cores    = 3,   
+              n.chains   = 3,     ### Normal is 3   
+              n.adapt    = 100,   ### normal is 100
+              n.iter     = 3000,  ### Normal is 3000
+              n.burnin   = 500,   ### normal is 500
+              n.thin     = 1,
+              set.seed(150))
+
+mod.use <- modC
+end_time <- Sys.time()
+end_time - start_time
+
+beep(sound = 8)
+```
+
+Evaluating model performance
+```{r echo=TRUE, warning=TRUE, fig.keep='all'}
+hist(mod.use$summary[,8], main="Rhat values", breaks=10000)
+plot(mod.use)
+```
+
